@@ -14,7 +14,7 @@ def split_dataset(data_path):
     if(os.path.exists(split_path)):
         print(f"{split_path} exists, you have probably already done the data split")
         return
-
+    os.mkdir(split_path)
     for i in range(3000):
         shutil.move(train_cropped_path+files[i], split_path)
 
