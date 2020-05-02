@@ -1,40 +1,53 @@
-def triplet_loss(anchor, label, embeddings, database, criterion=None):
+def triplet_loss(query_embeddings, labels, embeddings, support_labels):
     """
     Given an anchor, finds P and N, calculates Triplet Loss and backward gradient
     
     Parameters:
-        anchor: feature embedding for the anchor
-        label:  label for anchor
-        database: label to index
+        query_embeddings: feature embedding for the anchor
+        labels:  label for anchor
         embeddings: np array of normalized embeddings - assume same order as dataset
-        criterion: triplet loss passed to the function or then instantiate everytime fn is called
+        support_labels:  self explanatory
     
     Returns:
         loss: calculated loss (gradients are backpropagated within the fn itself)
-    """
+    """    
+    anchors = query_embeddings
+    positive = np.zeros_like(anchors)
+    negative = np.zeros_like(anchors)
     
-    classes = database.keys()
-    # if fn is a member of biometric class then use member var for classes and database
+#     support_labels = SOMETHING
+
+    print(anchors.size)
     
-    pairwise_dist = np.linalg.norm(embeddings - anchor , axis =1)
+    for i in range(anchors.shape[0]):
+        # biometric -> get_embeddings -> query + base embeddings
+        # get predicted labels from query using check_faces
+        pairwise_dist = np.linalg.norm(embeddings - anchors[i] , axis =1)
+
+        a_label = labels[i]
+        
+        print("alabale", a_label)
+
+        pos_mask = np.where(support_labels == a_label, support_labels,  0)
+        print("pos mask", pos_mask)
+        pos_distances = pairwise_dist * pos_mask
+        pos_index = np.argmax(pos_distances)
+        print("pos index", pos_index)
+        positive[i] = embeddings[pos_index]
+        
+        neg_mask = np.where(support_labels != a_label, support_labels,  0)
+        print("neg mask", neg_mask)
+        neg_distances = pairwise_dist * neg_mask
+        neg_index = np.argmin(pos_distances)
+        print("neg index", neg_index)
+        negative[i] = embeddings[neg_index]
     
-    # assuming there is only one index for each class
-    p_idx = database[label]
-    positive = embeddings[p_idx]
-    
-    n_idx = np.argmin(pairwise_dist[:p_idx])
-    if p_idx + 1 < len(embeddings):
-        n2_idx = p_idx + 1 + np.argmin(pairwise_dist[p_idx+1:])
-        if pairwise_dist[n2_idx] < pairwise_dist[n_idx]:
-            n_idx = n2_idx
-    
-    negative = embeddings[n_idx]
-    
-    if criterion is None:
-        criterion = nn.TripletMarginLoss(margin=1.0)
-    
-    loss = criterion(anchor, positive, negative)
-    loss.backward()
-    print("Loss: ", loss)
+    criterion = nn.TripletMarginLoss(margin=1.0)
+    print(positive)
+    print(negative)
+    print(anchors)
+    loss = criterion(anchors, positive, negative)
+#     loss.backward()
+    print("Loss: ", loss.item())
     
     return loss
