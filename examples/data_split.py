@@ -11,12 +11,14 @@ def split_dataset(data_path):
     files = os.listdir(train_cropped_path)
     n_total = len(files)
 
-    if(os.path.exists(split_path)):
-        print(f"{split_path} exists, you have probably already done the data split")
-        return
-    os.mkdir(split_path)
+    #if(os.path.exists(split_path)):
+    #    print(f"{split_path} exists, you have probably already done the data split")
+    #    return
+
     for i in range(3000):
-        shutil.move(train_cropped_path+files[i], split_path)
+        if files[i][0] != 'n':
+            print(files[i])
+    #    shutil.move(train_cropped_path+files[i], split_path)
 
     # if(split1 == None):
     #     split1 = int(n_total*60/100)
@@ -26,5 +28,4 @@ def split_dataset(data_path):
 
 
 if __name__ == "__main__":
-    split_dataset("../data")
-    
+    split_dataset("../data/")
