@@ -17,7 +17,7 @@ def triplet_loss(query_embeddings, labels, embeddings, support_labels):
     
 #     support_labels = SOMETHING
 
-    print(anchors.size)
+#     print(anchors.size)
     
     for i in range(anchors.shape[0]):
         # biometric -> get_embeddings -> query + base embeddings
@@ -25,29 +25,27 @@ def triplet_loss(query_embeddings, labels, embeddings, support_labels):
         pairwise_dist = np.linalg.norm(embeddings - anchors[i] , axis =1)
 
         a_label = labels[i]
-        
-        print("alabale", a_label)
 
         pos_mask = np.where(support_labels == a_label, support_labels,  0)
-        print("pos mask", pos_mask)
+#         print("pos mask", pos_mask)
         pos_distances = pairwise_dist * pos_mask
         pos_index = np.argmax(pos_distances)
-        print("pos index", pos_index)
+#         print("pos index", pos_index)
         positive[i] = embeddings[pos_index]
         
         neg_mask = np.where(support_labels != a_label, support_labels,  0)
-        print("neg mask", neg_mask)
+#         print("neg mask", neg_mask)
         neg_distances = pairwise_dist * neg_mask
         neg_index = np.argmin(pos_distances)
-        print("neg index", neg_index)
+#         print("neg index", neg_index)
         negative[i] = embeddings[neg_index]
     
     criterion = nn.TripletMarginLoss(margin=1.0)
-    print(positive)
-    print(negative)
-    print(anchors)
+#     print(positive)
+#     print(negative)
+#     print(anchors)
     loss = criterion(anchors, positive, negative)
 #     loss.backward()
-    print("Loss: ", loss.item())
+    print("Triplet Loss: ", loss.item())
     
     return loss
