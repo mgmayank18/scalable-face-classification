@@ -14,12 +14,8 @@ biometricSystem = BiometricSystem(database=initial_database, model=resnet, vgg_d
 for i in range(num_day):
     fraud = np.random.rand(num_query) < fraud_ratio
     labels = np.random.choice(imp_classes, num_query)
-    for i in np.where(fraud)[0]:
-        label = labels[i]
-        newlabel = np.random.choice(all_classes)
-        while(newlabel == label):
-            newlabel = np.random.choice(all_classes)
-        labels[i] = newlabel
+    labels[fraud] = np.random.choice(fraud_classes, len(labels[fraud]))
+
     query_ids = [np.random.choice(dataset.class_to_instances[label]) for label in labels]
     query_ids = np.array(query_ids)
     pred = biometricSystem.checkfaces(query_ids)
@@ -33,8 +29,8 @@ for i in range(num_day):
     tn += np.count_nonzero(_tn)
     fn += np.count_nonzero(_fn)
     
-print(f"tp = {tp/num_query_total}%")
-print(f"fp = {fp/num_query_total}%")
-print(f"tn = {tn/num_query_total}%")
-print(f"fn = {fn/num_query_total}%")
+print(f"tp = {100*tp/num_query_total}%")
+print(f"fp = {100*fp/num_query_total}%")
+print(f"tn = {100*tn/num_query_total}%")
+print(f"fn = {100*fn/num_query_total}%")
 

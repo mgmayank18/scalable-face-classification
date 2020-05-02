@@ -51,7 +51,7 @@ for _class in dataset.classes[:300]:
 resnet = InceptionResnetV1(pretrained='vggface2').eval().to(device)
 all_classes = np.array(list(dataset.idx_to_class.keys()))
 imp_classes = np.array(list(initial_database.keys()))
-
+fraud_classes = np.array(all_classes[len(imp_classes):])
 
 class BiometricSystem():
     def __init__(self, database, vgg_dataset, model=None, mtcnn=None, threshold=0.5):
