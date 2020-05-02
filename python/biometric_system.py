@@ -45,7 +45,7 @@ loader = DataLoader(dataset, collate_fn=collate_fn, num_workers=workers)
 
 initial_database = {}
 labels = np.array([j for i,j in dataset.imgs])
-for _class in dataset.classes[:300]:
+for _class in dataset.classes[:2000]:
     initial_database[dataset.class_to_idx[_class]] = np.where(labels==dataset.class_to_idx[_class])[0][0]
 
 resnet = InceptionResnetV1(pretrained='vggface2').eval().to(device)
