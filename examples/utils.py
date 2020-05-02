@@ -4,9 +4,11 @@ import os
 def load_orig_task_weights(model,weights_path=None):
     weights = torch.load(weights_path)
     res_weights = {}
+    print("Initializing new task weights with old task. Loading pretrained weights...")
     for name in model.state_dict().keys():
-        if 'new_task' in name:
-            res_weights[name] = model.state_dict()[name]
+        if '_new_task' in name:
+            foo = name.replace('_new_task','')
+            res_weights[name] = weights[foo]
             continue
         res_weights[name] = weights[name]
     model.load_state_dict(res_weights)
