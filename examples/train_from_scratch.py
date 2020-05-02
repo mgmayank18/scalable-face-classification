@@ -12,9 +12,9 @@ from utils import xavier_init
 
 data_dir = '../data/VGGFace2/train'
 
-batch_size = 512
+batch_size = 500
 epochs = 60
-workers = 0 if os.name == 'nt' else 20
+workers = 0 if os.name == 'nt' else 24
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 print('Running on device: {}'.format(device))
