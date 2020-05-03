@@ -25,6 +25,10 @@ num_day = 2
 
 num_query_total = num_query*num_day
 tp = fp = tn = fn = 0
+tp_list = np.zeros(num_day)
+fp_list = np.zeros(num_day)
+tn_list = np.zeros(num_day)
+fn_list = np.zeros(num_day)
 
 batch_size = 500
 pretrained_path = './saved_models_first_pretrain/epoch_29.pt'
@@ -108,6 +112,10 @@ for i in range(num_day):
     fp += np.count_nonzero(_fp)
     tn += np.count_nonzero(_tn)
     fn += np.count_nonzero(_fn)
+    tp_list[i] = _tp
+    fp_list[i] = _fp
+    tn_list[i] = _tn
+    fn_list[i] = _fn
     
 print(f"Average Time taken per day = {np.array(time_taken).mean()}")
 print(f"tp = {100*tp/num_query_total}%")
@@ -115,3 +123,7 @@ print(f"fp = {100*fp/num_query_total}%")
 print(f"tn = {100*tn/num_query_total}%")
 print(f"fn = {100*fn/num_query_total}%")
 
+print(f"tp_list = {tp_list}")
+print(f"fp_list = {fp_list}")
+print(f"tn_list = {tn_list}")
+print(f"fn_list = {fn_list}")
