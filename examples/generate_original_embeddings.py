@@ -23,7 +23,7 @@ def generate_original_embeddings(dataloader,data_dir,weights,output_path, batch_
 
     emb_dict = []
 
-    for i_batch, (x, y, index) in enumerate(vgg_data_loader):
+    for i_batch, (x, y, index) in enumerate(dataloader):
         print(i_batch)
         x = x.to(device)
         y = y.to(device)
