@@ -66,11 +66,7 @@ labels = np.array([j for i,j in dataset.imgs])
 dataset.class_to_instances = {class_idx : np.where(labels == class_idx)[0] for class_idx in dataset.idx_to_class.keys()}
 
 print("Creating Dataloader")
-<<<<<<< 88b820bc002f9a6f259d855fa30cbb78c1dd752e
 loader = DataLoader(dataset, num_workers=workers, batch_size=batch_size)
-=======
-loader = DataLoader(dataset_pretrain, batch_size=batch_size, num_workers=workers)
->>>>>>> Prototype baseline
 
 pretrained_embeddings_path = 'pretrained_embeddings.npy'
 if os.path.isfile(pretrained_embeddings_path):
