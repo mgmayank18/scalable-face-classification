@@ -94,7 +94,7 @@ class SupportDatabase():
 
         aligned = []
         for img_idx in self.img_idxs:
-            img = self.trans(self.vgg_dataset[img_idx][0])
+            img = self.vgg_dataset[img_idx][0]
             aligned.append(img)
         
         aligned = torch.stack(aligned).cuda()
@@ -130,13 +130,12 @@ class BiometricSystem():
         self.batch_size = batch_size
 
         self.model = model
-        self.trans = transforms.Compose([
-            np.float32,
-            transforms.ToTensor(),
-            fixed_image_standardization
-        ])
+        #self.trans = transforms.Compose([
+        #    np.float32,
+        #    transforms.ToTensor(),
+        #    fixed_image_standardization
+        #])
         self.threshold = threshold
-        print(database)
         self.supportDatabase = SupportDatabase(database, model, vgg_dataset, batch_size)
         
     def checkfaces(self, query_refs, thresh=0.7):
@@ -177,7 +176,7 @@ class BiometricSystem():
         
         n = len(query_refs)
         for query_ref in query_refs:
-            img = self.trans(self.vgg_dataset.__getitem__(query_ref)[0])
+            img = self.vgg_dataset.__getitem__(query_ref)[0]
             aligned.append(img)
 
         aligned = torch.stack(aligned).cuda()

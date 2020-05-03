@@ -23,7 +23,8 @@ vis = visdom.Visdom(server='gpu10.int.autonlab.org',port='8097')
 
 num_query = 2000
 fraud_ratio = 0.1
-num_day = 10
+num_day = 30
+threshold = 0.2
 
 num_query_total = num_query*num_day
 tp = fp = tn = fn = 0
@@ -90,7 +91,7 @@ fraud_classes = np.array(all_classes[len(imp_classes):])
 time_taken = []
 
 print("Initializing Biometric System...")
-biometricSystem = BiometricSystem(database=initial_database, model=resnet, vgg_dataset=dataset, orig_target_dict=pretrained_embeddings_path, batch_size=batch_size)
+biometricSystem = BiometricSystem(database=initial_database, model=resnet, vgg_dataset=dataset, orig_target_dict=pretrained_embeddings_path, batch_size=batch_size, threshold = threshold)
 
 for i in range(num_day):
     print("Day ",i)
@@ -121,7 +122,7 @@ for i in range(num_day):
     fp_list[i] = 100*np.count_nonzero(_fp)/num_query
     tn_list[i] = 100*np.count_nonzero(_tn)/num_query
     fn_list[i] = 100*np.count_nonzero(_fn)/num_query
-    
+
 print(f"Average Time taken per day = {np.array(time_taken).mean()}")
 print(f"tp = {100*tp/num_query_total}%")
 print(f"fp = {100*fp/num_query_total}%")
