@@ -33,7 +33,7 @@ class SupportDatabase():
     Proposed alternate representation NOT IMPLEMENTED
     self.database: Dictionary from label name to { 1) img_idxs, 2) embeddings and the 3) prototype_embedding}
     '''
-    def __init__(self, database, model, trans, vgg_dataset, batch_size):
+    def __init__(self, database, model, vgg_dataset, batch_size):
         # I have called this unique_class_ids to avoid confusion with labels
         self.unique_class_ids = np.zeros(len(database))
         self.prototypes = np.zeros((len(database), 512))
@@ -41,7 +41,7 @@ class SupportDatabase():
         self.labels = np.zeros(len(database))
         self.embeddings = np.zeros((len(database), 512))
         self.model = model
-        self.trans = trans
+        #self.trans = trans
         self.vgg_dataset = vgg_dataset
         self.batch_size = batch_size
         # self.database = {}
@@ -49,7 +49,7 @@ class SupportDatabase():
         # Get embeddings for initial database items
         aligned = []
         for class_id, img_ref in database.items():
-            img = self.trans(self.vgg_dataset[img_ref][0])
+            img = self.vgg_dataset[img_ref][0]
             aligned.append(img)
 
         aligned = torch.stack(aligned).cuda()
@@ -117,13 +117,13 @@ class SupportDatabase():
         return len(self.class_ids)
 
 class BiometricSystem():
-    def __init__(self, database, vgg_dataset, model, mtcnn=None, threshold=0.5, finetune_flag=True, batch_size=100):
+    def __init__(self, database, vgg_dataset, model, orig_target_dict, mtcnn=None, threshold=0.5, finetune_flag=True, batch_size=100):
         ''' Database format:
             Dictionary from class_idx to the sample index in vgg_dataset
         '''
         self.finetune_every = 10
         self.days = 0
-
+        self.orig_target_dict = orig_target_dict
         self.classes = database.keys()
         self.vgg_dataset = vgg_dataset
         self.finetune_flag = finetune_flag
@@ -136,7 +136,8 @@ class BiometricSystem():
             fixed_image_standardization
         ])
         self.threshold = threshold
-        self.supportDatabase = SupportDatabase(database, model, self.trans, vgg_dataset, batch_size)
+        print(database)
+        self.supportDatabase = SupportDatabase(database, model, vgg_dataset, batch_size)
         
     def checkfaces(self, query_refs, thresh=0.7):
         ''' List of queries for one day

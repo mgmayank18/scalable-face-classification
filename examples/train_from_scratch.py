@@ -13,10 +13,10 @@ from utils import xavier_init
 data_dir = '../data/VGGFace2/train'
 
 batch_size = 500
-epochs = 60
+epochs = 10
 workers = 0 if os.name == 'nt' else 24
 
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Running on device: {}'.format(device))
 '''
 mtcnn = MTCNN(
@@ -44,6 +44,7 @@ for i, (x, y) in enumerate(loader):
     
 # Remove mtcnn to reduce GPU memory usage
 del mtcnn
+"Done MTCNN"
 '''
 
 resnet = InceptionResnetV1(
@@ -66,15 +67,18 @@ dataset = datasets.ImageFolder(data_dir + '_cropped', transform=trans)
 print("Done.")
 
 
-
-
 resnet = nn.DataParallel(resnet.to(device))
+#weights = torch.load('./saved_models/lr_0.1/best_lr_0.1.pt')
+#resnet.load_state_dict(weights)
 
 optimizer = optim.AdamW(resnet.parameters(), lr=0.1)
-scheduler = MultiStepLR(optimizer, [15, 30, 45])
+
+#optimizer = optim.SGD(resnet.parameters(), lr=0.1)
+scheduler = MultiStepLR(optimizer, [10, 15])
 #scheduler = None
 
 img_inds = np.arange(len(dataset))
+np.random.seed(0)
 np.random.shuffle(img_inds)
 train_inds = img_inds[:int(0.96 * len(img_inds))]
 val_inds = img_inds[int(0.96 * len(img_inds)):]
@@ -127,7 +131,7 @@ for epoch in range(epochs):
     )
     
     print("Saving Model...")
-    torch.save(resnet.state_dict(), './saved_models/epoch_'+str(59+epoch)+'.pt')
+    torch.save(resnet.state_dict(), './saved_models/epoch_'+str(epoch+1)+'.pt')
 
     resnet.eval()
     training.pass_epoch(

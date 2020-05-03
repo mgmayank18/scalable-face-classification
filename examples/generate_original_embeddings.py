@@ -7,6 +7,7 @@ import numpy as np
 import torch.nn as nn
 import os 
 from torchvision import transforms
+import sys
 
 def generate_original_embeddings(loader, dataset_path, pretrained_path, pretrained_embeddings_path, batch_size, workers, device):
     data_dir = dataset_path
@@ -29,14 +30,13 @@ def generate_original_embeddings(loader, dataset_path, pretrained_path, pretrain
     emb_dict = []
 
     for i_batch, (x, y, index) in enumerate(vgg_data_loader):
-        print(i_batch)
+        sys.stdout.write('\r - Processing Batch %d or %d.' % (i_batch,len(vgg_data_loader)))
+        sys.stdout.flush()
         x = x.to(device)
         y = y.to(device)
         y_pred = resnet(x)
         emb_dict.append(y_pred.cpu().detach().numpy())
-        # print(len(dataloader))
-        # print(len(emb_dict))
-
+        
     emb_dict = np.vstack(emb_dict)
     print(emb_dict.shape)
     np.save('pretrained_embeddings.npy',emb_dict)

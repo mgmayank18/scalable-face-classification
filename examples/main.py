@@ -17,13 +17,13 @@ import numpy as np
 import os
 
 import visdom
-vis = visdom.Visdom()
+vis = visdom.Visdom(server='gpu10.int.autonlab.org',port='8097')
 
 #ASSUMPTION: All support classes are first k classes of all_classes
 
 num_query = 2000
 fraud_ratio = 0.1
-num_day = 100
+num_day = 10
 
 num_query_total = num_query*num_day
 tp = fp = tn = fn = 0
@@ -33,8 +33,8 @@ tn_list = np.zeros(num_day)
 fn_list = np.zeros(num_day)
 
 batch_size = 200
-pretrained_path = './saved_models_first_pretrain/epoch_29.pt'
-dataset_path = '../data/VGGFace2/test_cropped'
+pretrained_path = './saved_models_attempt2/lr_0.0001/epoch_7.pt'
+dataset_path = '../data/VGGFace2/train_cropped_split'
 num_imp_classes = 450
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -42,16 +42,16 @@ print('Running on device: {}'.format(device))
     
 workers = 0 if os.name == 'nt' else 24
 
-# resnet = InceptionResnetV1_LWF(
-#     classify=False,
-#     pretrained=None,
-#     num_classes=5631
-# )
-# resnet = nn.DataParallel(resnet)
-# resnet = load_orig_task_weights(resnet,pretrained_path)
-# resnet.eval().to(device)
+resnet = InceptionResnetV1_LWF(
+    classify=False,
+    pretrained=None,
+    num_classes=5631
+)
+resnet = nn.DataParallel(resnet)
+resnet = load_orig_task_weights(resnet,pretrained_path)
+resnet.eval().to(device)
 
-resnet = InceptionResnetV1(pretrained='vggface2').eval().to(device)
+#resnet = InceptionResnetV1(pretrained='vggface2').eval().to(device)
 
 print("Loading Dataset")
 trans = transforms.Compose([
@@ -59,8 +59,8 @@ trans = transforms.Compose([
     transforms.ToTensor(),
     fixed_image_standardization
 ])
-dataset_pretrain = VGGFace2Dataset(dataset_path, trans)
-dataset = datasets.ImageFolder(dataset_path)
+
+dataset = datasets.ImageFolder(dataset_path, trans)
 dataset.idx_to_class = {i:c for c, i in dataset.class_to_idx.items()}
 labels = np.array([j for i,j in dataset.imgs])
 dataset.class_to_instances = {class_idx : np.where(labels == class_idx)[0] for class_idx in dataset.idx_to_class.keys()}
@@ -74,6 +74,8 @@ if os.path.isfile(pretrained_embeddings_path):
     pretrained_embeddings_list = np.load(pretrained_embeddings_path)
 else:
     print("Generating Embeddings from pretrained weights")
+    dataset = VGGFace2Dataset(dataset_path, trans)
+    loader = DataLoader(dataset, num_workers=workers, batch_size=batch_size)
     pretrained_embeddings_list = generate_original_embeddings(loader, dataset_path, pretrained_path, pretrained_embeddings_path, batch_size, workers, device)
 
 initial_database = {}
@@ -88,7 +90,7 @@ fraud_classes = np.array(all_classes[len(imp_classes):])
 time_taken = []
 
 print("Initializing Biometric System...")
-biometricSystem = BiometricSystem(database=initial_database, model=resnet, vgg_dataset=dataset)
+biometricSystem = BiometricSystem(database=initial_database, model=resnet, vgg_dataset=dataset, orig_target_dict=pretrained_embeddings_path, batch_size=batch_size)
 
 for i in range(num_day):
     print("Day ",i)
