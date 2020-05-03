@@ -1,4 +1,6 @@
-from facenet_pytorch import MTCNN, InceptionResnetV1, fixed_image_standardization, training
+from facenet_pytorch import MTCNN, fixed_image_standardization, training
+from BalancedBatchSampler import BalancedBatchSampler, SupportDataset
+from finetune_on_support import finetune_on_support
 import torch
 from torch.utils.data import Dataset, DataLoader, SubsetRandomSampler
 from torch import optim
@@ -13,27 +15,128 @@ import os
 
 from sklearn.neighbors import NearestNeighbors
 
+class SupportDatabase():
+    '''
+    SUPPORT DATASET and SUPPORT DATABASE ARE DIFFERENT
+    Apologies for the very confusing names
+    Initially this class will store all classes and their first example
+    Eventually new items will be added and then:
+
+    This class will store all the support image_idx's and their corresponding class_idxs (according to the system)
+    self.unique_class_ids: contains the UNIQUE support class_ids
+    self.prototypes:       contain the prototype embedding for each class_id (in the order of class_ids)
+    self.img_idxs:         contains ALL image_idxs in the support dataset even the online added
+    self.labels:           contains labels corresponding to the img_idxs
+    self.embeddings:       contains labels corresponding to the img_idxs
+
+
+    Proposed alternate representation NOT IMPLEMENTED
+    self.database: Dictionary from label name to { 1) img_idxs, 2) embeddings and the 3) prototype_embedding}
+    '''
+    def __init__(self, database, model, trans, vgg_dataset, batch_size):
+        # I have called this unique_class_ids to avoid confusion with labels
+        self.unique_class_ids = np.zeros(len(database))
+        self.prototypes = np.zeros((len(database), 512))
+        self.img_idxs = np.zeros(len(database))
+        self.labels = np.zeros(len(database))
+        self.embeddings = np.zeros((len(database), 512))
+        self.model = model
+        self.trans = trans
+        self.vgg_dataset = vgg_dataset
+        self.batch_size = batch_size
+        # self.database = {}
+
+        # Get embeddings for initial database items
+        aligned = []
+        for class_id, img_ref in database.items():
+            img = self.trans(self.vgg_dataset[img_ref][0])
+            aligned.append(img)
+
+        aligned = torch.stack(aligned).cuda()
+        embeddings = np.zeros((len(aligned), 512))
+        self.model.eval()
+        for i in range(0, math.ceil(len(aligned)/self.batch_size)):
+            start = self.batch_size*i
+            end = min(self.batch_size*(i+1), len(aligned))
+            embeddings[start:end] = self.model(aligned[start:end]).detach().cpu()
+
+        embeddings = embeddings / (np.linalg.norm(embeddings, axis=-1)[:, np.newaxis])
+
+        for i, item in enumerate(database.items()):
+            label, img_idx = item
+            self.unique_class_ids[i] = label
+            self.prototypes[i] = embeddings[i]
+            self.img_idxs[i] = img_idx
+            self.labels[i] = label
+            self.embeddings[i] = embeddings[i]
+            
+        #     self.database[label] = {
+        #         'img_idx': [img_idx]
+        #         'embeddings': [embeddings[i]]
+        #         'prototype': [embeddings[i]]
+        #     }
+
+    def update_db(self, img_idxs, labels, embeddings):
+        self.img_idxs = np.append(self.img_idxs, img_idxs)
+        self.labels = np.append(self.labels, labels)
+        self.embeddings = np.vstack((self.embeddings, embeddings))
+
+        for i, label in enumerate(self.unique_class_ids):
+            # print("before", self.prototypes[i])
+            self.prototypes[i] = np.mean(self.embeddings[self.labels == label], axis=0)
+            self.prototypes[i] = self.prototypes[i] / np.linalg.norm(self.prototypes[i])
+            # print("after", self.prototypes[i])
+    
+    def update_model(self, model):
+        self.model = model
+        # Update embeddings and prototypes
+        print("abd")
+
+        aligned = []
+        for img_idx in self.img_idxs:
+            img = self.trans(self.vgg_dataset[img_idx][0])
+            aligned.append(img)
+        
+        aligned = torch.stack(aligned).cuda()
+        embeddings = np.zeros((len(aligned), 512))
+        self.model.eval()
+        for i in range(0, math.ceil(len(aligned)/self.batch_size)):
+            start = self.batch_size*i
+            end = min(self.batch_size*(i+1), len(aligned))
+            embeddings[start:end] = self.model(aligned[start:end]).detach().cpu()
+
+        embeddings = embeddings / (np.linalg.norm(embeddings, axis=-1)[:, np.newaxis])
+        self.embeddings = embeddings
+        for i, label in enumerate(self.unique_class_ids):
+            self.prototypes[i] = np.mean(self.embeddings[self.labels == label], axis=0)
+            self.prototypes[i] = self.prototypes[i] / np.mean(self.prototypes[i])
+
+        print("villiers")
+
+    def __len__(self):
+        return len(self.class_ids)
+
 class BiometricSystem():
-    def __init__(self, database, vgg_dataset, model=None, mtcnn=None, threshold=0.5, finetune_flag=True, batch_size=100):
+    def __init__(self, database, vgg_dataset, model, mtcnn=None, threshold=0.5, finetune_flag=True, batch_size=100):
         ''' Database format:
             Dictionary from class_idx to the sample index in vgg_dataset
         '''
-        self.database = database
+        self.finetune_every = 10
+        self.days = 0
+
         self.classes = database.keys()
         self.vgg_dataset = vgg_dataset
         self.finetune_flag = finetune_flag
         self.batch_size = batch_size
 
-        if model:
-            self.model = model
-        else:
-            self.model = InceptionResnetV1(pretrained='vggface2').eval().to(device)
+        self.model = model
         self.trans = transforms.Compose([
             np.float32,
             transforms.ToTensor(),
             fixed_image_standardization
         ])
         self.threshold = threshold
+        self.supportDatabase = SupportDatabase(database, model, self.trans, vgg_dataset, batch_size)
         
     def checkfaces(self, query_refs, thresh=0.7):
         ''' List of queries for one day
@@ -49,13 +152,19 @@ class BiometricSystem():
         c = time.time()
         print("Calculated NN in ", c-b, " seconds")
         pred = neighs.flatten()
+        mask = pred>0
 
-        for query_ref, pred_val in zip(query_refs, pred):
-            # TODO: update accordingly using Sanil's updated internal database structure
-            supportDataset = SupportDataset(self.img_idxs, self.labels, self.vgg_dataset)
-            balancedBatchSampler = BalancedBatchSampler(self.labels, 4, 4)
-            supportTrainLoader = DataLoader(supportDataset, batch_sampler=balancedBatchSampler)
-            finetune_on_support(self.model, supportTrainLoader, self.orig_target_dict)
+        self.supportDatabase.update_db(query_refs[mask], pred[mask], query_embeddings[mask])     
+        self.days +=1
+        # if(self.days%self.finetune_every == 0):
+        #     # Do the finetuning
+        #     # SUPPORT DATASET and SUPPORT DATABASE ARE DIFFERENT
+        #     print("Finetuning on support database")
+        #     supportDataset = SupportDataset(self.supportDatabase.img_idxs, self.supportDatabase.labels, self.vgg_dataset)
+        #     balancedBatchSampler = BalancedBatchSampler(self.supportDatabase.labels, 4, 4)
+        #     supportTrainLoader = DataLoader(supportDataset, batch_sampler=balancedBatchSampler)
+        #     # finetune_on_support(self.model, supportTrainLoader, self.orig_target_dict)
+        #     self.supportDatabase.update_model(self.model)
 
         return pred
                 
@@ -69,20 +178,16 @@ class BiometricSystem():
         for query_ref in query_refs:
             img = self.trans(self.vgg_dataset.__getitem__(query_ref)[0])
             aligned.append(img)
-            
-        for class_id, img_ref in self.database.items():
-            img = self.trans(self.vgg_dataset.__getitem__(img_ref)[0])
-            aligned.append(img)
-            classes.append(class_id)
 
-        aligned = torch.stack(aligned).to(device)
+        aligned = torch.stack(aligned).cuda()
         embeddings = np.zeros((len(aligned), 512))
-        for i in range(0, math.ceil(len(aligned)/32)):
+        self.model.eval()
+        for i in range(0, math.ceil(len(aligned)/self.batch_size)):
             start = self.batch_size*i
             end = min(self.batch_size*(i+1), len(aligned))
-            embeddings[start:end] = resnet(aligned[start:end]).detach().cpu()
+            embeddings[start:end] = self.model(aligned[start:end]).detach().cpu()
         
-        embeddings = embeddings / np.linalg.norm(embeddings, axis=-1)[:, np.newaxis]
-        query_embeddings = embeddings[:n]
-        support_embeddings = embeddings[n:]
+        embeddings = embeddings / (np.linalg.norm(embeddings, axis=-1)[:, np.newaxis])
+        query_embeddings = embeddings
+        support_embeddings = self.supportDatabase.prototypes
         return query_embeddings, support_embeddings

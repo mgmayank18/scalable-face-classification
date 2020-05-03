@@ -28,15 +28,27 @@ def generate_original_embeddings(loader, dataset_path, pretrained_path, pretrain
 
     emb_dict = []
 
+<<<<<<< 88b820bc002f9a6f259d855fa30cbb78c1dd752e
     for i_batch, (x, y, index) in enumerate(vgg_data_loader):
+=======
+    for i_batch, (x, y, index) in enumerate(dataloader):
+        # print(x.shape)
+>>>>>>> Prototype baseline
         print(i_batch)
         x = x.to(device)
         y = y.to(device)
         y_pred = resnet(x)
-
         emb_dict.append(y_pred.cpu().detach().numpy())
+        # print(len(dataloader))
+        # print(len(emb_dict))
+
     emb_dict = np.vstack(emb_dict)
+<<<<<<< 88b820bc002f9a6f259d855fa30cbb78c1dd752e
     print(emb_dict.shape)
     np.save('pretrained_embeddings.npy',emb_dict)
+=======
+    print(f"Saving to {output_path}")
+    np.save(output_path, emb_dict)
+>>>>>>> Prototype baseline
     return emb_dict
         

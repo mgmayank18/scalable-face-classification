@@ -279,6 +279,7 @@ class InceptionResnetV1_LWF(nn.Module):
         Returns:
             torch.tensor -- Batch of embeddings or softmax probabilities.
         """
+
         x = self.conv2d_1a(x)
         x = self.conv2d_2a(x)
         x = self.conv2d_2b(x)
@@ -308,7 +309,10 @@ class InceptionResnetV1_LWF(nn.Module):
         x_new = self.last_bn_new_task(x_new)
         x_new = F.normalize(x_new, p=2, dim=1)
         
-        return x_orig#, x_new 
+        if self.training:
+            return x_orig, x_new 
+        else:
+            return x_new
 
 
 def load_weights(mdl, name):

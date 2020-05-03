@@ -10,18 +10,20 @@ import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 from torchvision import datasets, transforms
 from VGGFace2Dataset import VGGFace2Dataset
-from facenet_pytorch import fixed_image_standardization
+from facenet_pytorch import fixed_image_standardization, InceptionResnetV1
 from generate_original_embeddings import generate_original_embeddings
 import math
 import numpy as np
 import os
 
+import visdom
+vis = visdom.Visdom()
 
 #ASSUMPTION: All support classes are first k classes of all_classes
 
 num_query = 2000
 fraud_ratio = 0.1
-num_day = 2 
+num_day = 100
 
 num_query_total = num_query*num_day
 tp = fp = tn = fn = 0
@@ -30,23 +32,26 @@ fp_list = np.zeros(num_day)
 tn_list = np.zeros(num_day)
 fn_list = np.zeros(num_day)
 
-batch_size = 500
+batch_size = 200
 pretrained_path = './saved_models_first_pretrain/epoch_29.pt'
-dataset_path = '../data/VGGFace2/train_cropped_split'
+dataset_path = '../data/VGGFace2/test_cropped'
+num_imp_classes = 450
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Running on device: {}'.format(device))
     
 workers = 0 if os.name == 'nt' else 24
 
-resnet = InceptionResnetV1_LWF(
-    classify=False,
-    pretrained=None,
-    num_classes=5631
-)
-resnet = nn.DataParallel(resnet)
-resnet = load_orig_task_weights(resnet,pretrained_path)
-resnet.eval().to(device)
+# resnet = InceptionResnetV1_LWF(
+#     classify=False,
+#     pretrained=None,
+#     num_classes=5631
+# )
+# resnet = nn.DataParallel(resnet)
+# resnet = load_orig_task_weights(resnet,pretrained_path)
+# resnet.eval().to(device)
+
+resnet = InceptionResnetV1(pretrained='vggface2').eval().to(device)
 
 print("Loading Dataset")
 trans = transforms.Compose([
@@ -54,13 +59,18 @@ trans = transforms.Compose([
     transforms.ToTensor(),
     fixed_image_standardization
 ])
-dataset = VGGFace2Dataset(dataset_path, trans)
+dataset_pretrain = VGGFace2Dataset(dataset_path, trans)
+dataset = datasets.ImageFolder(dataset_path)
 dataset.idx_to_class = {i:c for c, i in dataset.class_to_idx.items()}
 labels = np.array([j for i,j in dataset.imgs])
 dataset.class_to_instances = {class_idx : np.where(labels == class_idx)[0] for class_idx in dataset.idx_to_class.keys()}
 
 print("Creating Dataloader")
+<<<<<<< 88b820bc002f9a6f259d855fa30cbb78c1dd752e
 loader = DataLoader(dataset, num_workers=workers, batch_size=batch_size)
+=======
+loader = DataLoader(dataset_pretrain, batch_size=batch_size, num_workers=workers)
+>>>>>>> Prototype baseline
 
 pretrained_embeddings_path = 'pretrained_embeddings.npy'
 if os.path.isfile(pretrained_embeddings_path):
@@ -72,7 +82,7 @@ else:
 
 initial_database = {}
 labels = np.array([j for i,j in dataset.imgs])
-for _class in dataset.classes[:2000]:
+for _class in dataset.classes[:num_imp_classes]:
     initial_database[dataset.class_to_idx[_class]] = np.where(labels==dataset.class_to_idx[_class])[0][0]
 
 all_classes = np.array(list(dataset.idx_to_class.keys()))
@@ -109,10 +119,10 @@ for i in range(num_day):
     fp += np.count_nonzero(_fp)
     tn += np.count_nonzero(_tn)
     fn += np.count_nonzero(_fn)
-    tp_list[i] = _tp
-    fp_list[i] = _fp
-    tn_list[i] = _tn
-    fn_list[i] = _fn
+    tp_list[i] = 100*np.count_nonzero(_tp)/num_query
+    fp_list[i] = 100*np.count_nonzero(_fp)/num_query
+    tn_list[i] = 100*np.count_nonzero(_tn)/num_query
+    fn_list[i] = 100*np.count_nonzero(_fn)/num_query
     
 print(f"Average Time taken per day = {np.array(time_taken).mean()}")
 print(f"tp = {100*tp/num_query_total}%")
@@ -124,3 +134,33 @@ print(f"tp_list = {tp_list}")
 print(f"fp_list = {fp_list}")
 print(f"tn_list = {tn_list}")
 print(f"fn_list = {fn_list}")
+
+# Plot them in same one later?
+
+vis.line(Y= tp_list, X=np.arange(num_day), opts={
+    "title" : "True Positive", 
+    "ytickmin" : 0,
+    "ytickmax" : 100,
+    "linecolor":np.array([(0,0,255)])
+    })
+
+vis.line(Y= fp_list, X=np.arange(num_day), opts={
+    "title" : "False Positive", 
+    "ytickmin" : 0,
+    "ytickmax" : 100,
+    "linecolor":np.array([(255,0,0)])
+    })
+
+vis.line(Y= tn_list, X=np.arange(num_day), opts={
+    "title" : "True Negative", 
+    "ytickmin" : 0,
+    "ytickmax" : 100,
+    "linecolor":np.array([(0,0,255)])
+    })
+
+vis.line(Y= fn_list, X=np.arange(num_day), opts={
+    "title" : "False Negative", 
+    "ytickmin" : 0,
+    "ytickmax" : 100,
+    "linecolor":np.array([(255,0,0)])
+    })
