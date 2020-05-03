@@ -8,7 +8,10 @@ import torch.nn as nn
 import os 
 from torchvision import transforms
 
-def generate_original_embeddings(dataloader,data_dir,weights,output_path, batch_size, workers, device):
+def generate_original_embeddings(loader, dataset_path, pretrained_path, pretrained_embeddings_path, batch_size, workers, device):
+    data_dir = dataset_path
+    weights = pretrained_path
+
     resnet = InceptionResnetV1(
         classify=False,
         pretrained=None,
@@ -19,11 +22,13 @@ def generate_original_embeddings(dataloader,data_dir,weights,output_path, batch_
     trained_weights = torch.load(weights)
     resnet.load_state_dict(trained_weights)
 
+    vgg_data_loader = loader
+    
     resnet.eval().to(device)
 
     emb_dict = []
 
-    for i_batch, (x, y, index) in enumerate(dataloader):
+    for i_batch, (x, y, index) in enumerate(vgg_data_loader):
         print(i_batch)
         x = x.to(device)
         y = y.to(device)
@@ -31,5 +36,7 @@ def generate_original_embeddings(dataloader,data_dir,weights,output_path, batch_
 
         emb_dict.append(y_pred.cpu().detach().numpy())
     emb_dict = np.vstack(emb_dict)
-    np.save(output_path,emb_dict)
+    print(emb_dict.shape)
+    np.save('pretrained_embeddings.npy',emb_dict)
     return emb_dict
+        
