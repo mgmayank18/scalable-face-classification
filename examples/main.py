@@ -25,6 +25,7 @@ num_query = 2000
 fraud_ratio = 0.1
 num_day = 30
 threshold = 0.2
+finetune_every = 2
 
 num_query_total = num_query*num_day
 tp = fp = tn = fn = 0
@@ -33,10 +34,10 @@ fp_list = np.zeros(num_day)
 tn_list = np.zeros(num_day)
 fn_list = np.zeros(num_day)
 
-batch_size = 200
+batch_size = 300
 pretrained_path = './saved_models_attempt2/lr_0.0001/epoch_7.pt'
 dataset_path = '../data/VGGFace2/train_cropped_split'
-num_imp_classes = 450
+num_imp_classes = 2000
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Running on device: {}'.format(device))
@@ -91,7 +92,7 @@ fraud_classes = np.array(all_classes[len(imp_classes):])
 time_taken = []
 
 print("Initializing Biometric System...")
-biometricSystem = BiometricSystem(database=initial_database, model=resnet, vgg_dataset=dataset, orig_target_dict=pretrained_embeddings_path, batch_size=batch_size, threshold = threshold)
+biometricSystem = BiometricSystem(database=initial_database, model=resnet, vgg_dataset=dataset, orig_target_dict=pretrained_embeddings_list, batch_size=batch_size, threshold = threshold, finetune_every=finetune_every)
 
 for i in range(num_day):
     print("Day ",i)

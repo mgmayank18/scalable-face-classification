@@ -117,11 +117,11 @@ class SupportDatabase():
         return len(self.class_ids)
 
 class BiometricSystem():
-    def __init__(self, database, vgg_dataset, model, orig_target_dict, mtcnn=None, threshold=0.5, finetune_flag=True, batch_size=100):
+    def __init__(self, database, vgg_dataset, model, orig_target_dict, mtcnn=None, threshold=0.5, finetune_flag=True, batch_size=100, finetune_every = 10):
         ''' Database format:
             Dictionary from class_idx to the sample index in vgg_dataset
         '''
-        self.finetune_every = 10
+        self.finetune_every = finetune_every
         self.days = 0
         self.orig_target_dict = orig_target_dict
         self.classes = database.keys()
@@ -156,16 +156,16 @@ class BiometricSystem():
 
         self.supportDatabase.update_db(query_refs[mask], pred[mask], query_embeddings[mask])     
         self.days +=1
-        # if(self.days%self.finetune_every == 0):
-        #     # Do the finetuning
-        #     # SUPPORT DATASET and SUPPORT DATABASE ARE DIFFERENT
-        #     print("Finetuning on support database")
-        #     supportDataset = SupportDataset(self.supportDatabase.img_idxs, self.supportDatabase.labels, self.vgg_dataset)
-        #     balancedBatchSampler = BalancedBatchSampler(self.supportDatabase.labels, 4, 4)
-        #     supportTrainLoader = DataLoader(supportDataset, batch_sampler=balancedBatchSampler)
-        #     # finetune_on_support(self.model, supportTrainLoader, self.orig_target_dict)
-        #     self.supportDatabase.update_model(self.model)
-
+        
+        if(self.days%self.finetune_every == 0):
+             # Do the finetuning
+             # SUPPORT DATASET and SUPPORT DATABASE ARE DIFFERENT
+             print("Finetuning on support database")
+             supportDataset = SupportDataset(self.supportDatabase.img_idxs, self.supportDatabase.labels, self.vgg_dataset)
+             balancedBatchSampler = BalancedBatchSampler(self.supportDatabase.labels, int(self.batch_size/3), 3)
+             supportTrainLoader = DataLoader(supportDataset, batch_sampler=balancedBatchSampler)
+             finetune_on_support(self.model, supportTrainLoader, self.orig_target_dict)
+             self.supportDatabase.update_model(self.model)
         return pred
                 
     def get_embeddings(self, query_refs):

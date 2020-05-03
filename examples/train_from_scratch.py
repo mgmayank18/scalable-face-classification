@@ -68,10 +68,10 @@ print("Done.")
 
 
 resnet = nn.DataParallel(resnet.to(device))
-#weights = torch.load('./saved_models/lr_0.1/best_lr_0.1.pt')
-#resnet.load_state_dict(weights)
+weights = torch.load('./saved_models/lr_0.1/epoch_5.pt')
+resnet.load_state_dict(weights)
 
-optimizer = optim.AdamW(resnet.parameters(), lr=0.1)
+optimizer = optim.AdamW(resnet.parameters(), lr=0.01)
 
 #optimizer = optim.SGD(resnet.parameters(), lr=0.1)
 scheduler = MultiStepLR(optimizer, [10, 15])

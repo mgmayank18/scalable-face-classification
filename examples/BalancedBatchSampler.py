@@ -55,8 +55,11 @@ class SupportDataset(Dataset):
     def __getitem__(self, index):
         """ Get a sample from the dataset
         """
-        return self.vgg_dataset[self.samples[index]]
+        img = self.vgg_dataset[int(self.img_idxs[index])] #Store these as INTs to begin with?
+        label = self.labels[index]
+        idx = int(self.img_idxs[index])
+        return (img, label, idx)
     
     def __len__(self):
-        return len(self.samples)
+        return len(self.img_idxs)
     
