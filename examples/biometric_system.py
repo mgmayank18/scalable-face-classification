@@ -14,7 +14,7 @@ import os
 from sklearn.neighbors import NearestNeighbors
 
 class BiometricSystem():
-    def __init__(self, database, vgg_dataset, model=None, mtcnn=None, threshold=0.5, finetune_flag=True):
+    def __init__(self, database, vgg_dataset, model=None, mtcnn=None, threshold=0.5, finetune_flag=True, batch_size=100):
         ''' Database format:
             Dictionary from class_idx to the sample index in vgg_dataset
         '''
@@ -22,6 +22,7 @@ class BiometricSystem():
         self.classes = database.keys()
         self.vgg_dataset = vgg_dataset
         self.finetune_flag = finetune_flag
+        self.batch_size = batch_size
 
         if model:
             self.model = model
@@ -47,15 +48,22 @@ class BiometricSystem():
         neighs[dists>thresh] = -1
         c = time.time()
         print("Calculated NN in ", c-b, " seconds")
-        return neighs.flatten()
+        pred = neighs.flatten()
+
+        for query_ref, pred_val in zip(query_refs, pred):
+            # TODO: update accordingly using Sanil's updated internal database structure
+            supportDataset = SupportDataset(self.img_idxs, self.labels, self.vgg_dataset)
+            balancedBatchSampler = BalancedBatchSampler(self.labels, 4, 4)
+            supportTrainLoader = DataLoader(supportDataset, batch_sampler=balancedBatchSampler)
+            finetune_on_support(self.model, supportTrainLoader, self.orig_target_dict)
+
+        return pred
                 
     def get_embeddings(self, query_refs):
         ''' List of queries for one day
         Get a query with the vgg_sample_idx query_ids'''
         aligned = []
         classes = []
-
-        batch_size = 100
         
         n = len(query_refs)
         for query_ref in query_refs:
@@ -70,8 +78,8 @@ class BiometricSystem():
         aligned = torch.stack(aligned).to(device)
         embeddings = np.zeros((len(aligned), 512))
         for i in range(0, math.ceil(len(aligned)/32)):
-            start = batch_size*i
-            end = min(batch_size*(i+1), len(aligned))
+            start = self.batch_size*i
+            end = min(self.batch_size*(i+1), len(aligned))
             embeddings[start:end] = resnet(aligned[start:end]).detach().cpu()
         
         embeddings = embeddings / np.linalg.norm(embeddings, axis=-1)[:, np.newaxis]
