@@ -48,9 +48,6 @@ resnet = nn.DataParallel(resnet)
 resnet = load_orig_task_weights(resnet,pretrained_path)
 resnet.eval().to(device)
 
-def collate_fn(x):
-    return x[0]
-
 print("Loading Dataset")
 trans = transforms.Compose([
     np.float32,
@@ -63,7 +60,7 @@ labels = np.array([j for i,j in dataset.imgs])
 dataset.class_to_instances = {class_idx : np.where(labels == class_idx)[0] for class_idx in dataset.idx_to_class.keys()}
 
 print("Creating Dataloader")
-loader = DataLoader(dataset, collate_fn=collate_fn, num_workers=workers)
+loader = DataLoader(dataset, num_workers=workers)
 
 pretrained_embeddings_path = 'pretrained_embeddings.npy'
 if os.path.isfile(pretrained_embeddings_path):
