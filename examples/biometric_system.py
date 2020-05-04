@@ -35,10 +35,10 @@ class SupportDatabase():
     '''
     def __init__(self, database, model, vgg_dataset, batch_size):
         # I have called this unique_class_ids to avoid confusion with labels
-        self.unique_class_ids = np.zeros(len(database))
+        self.unique_class_ids = np.zeros(len(database),dtype=int)
         self.prototypes = np.zeros((len(database), 512))
-        self.img_idxs = np.zeros(len(database))
-        self.labels = np.zeros(len(database))
+        self.img_idxs = np.zeros(len(database),dtype=int)
+        self.labels = np.zeros(len(database),dtype=int)
         self.embeddings = np.zeros((len(database), 512))
         self.model = model
         #self.trans = trans
@@ -77,8 +77,8 @@ class SupportDatabase():
         #     }
 
     def update_db(self, img_idxs, labels, embeddings):
-        self.img_idxs = np.append(self.img_idxs, img_idxs)
-        self.labels = np.append(self.labels, labels)
+        self.img_idxs = np.append(self.img_idxs, img_idxs).astype(int)
+        self.labels = np.append(self.labels, labels).astype(int)
         self.embeddings = np.vstack((self.embeddings, embeddings))
 
         for i, label in enumerate(self.unique_class_ids):
@@ -90,7 +90,6 @@ class SupportDatabase():
     def update_model(self, model):
         self.model = model
         # Update embeddings and prototypes
-        print("abd")
 
         aligned = []
         for img_idx in self.img_idxs:
@@ -110,8 +109,6 @@ class SupportDatabase():
         for i, label in enumerate(self.unique_class_ids):
             self.prototypes[i] = np.mean(self.embeddings[self.labels == label], axis=0)
             self.prototypes[i] = self.prototypes[i] / np.mean(self.prototypes[i])
-
-        print("villiers")
 
     def __len__(self):
         return len(self.class_ids)
@@ -157,11 +154,13 @@ class BiometricSystem():
         self.supportDatabase.update_db(query_refs[mask], pred[mask], query_embeddings[mask])     
         self.days +=1
         
-        if(self.days%self.finetune_every == 0):
+        if(self.days%self.finetune_every == 0) and self.finetune_flag:
              # Do the finetuning
              # SUPPORT DATASET and SUPPORT DATABASE ARE DIFFERENT
              print("Finetuning on support database")
              supportDataset = SupportDataset(self.supportDatabase.img_idxs, self.supportDatabase.labels, self.vgg_dataset)
+             np.save('img_idx.npy',self.supportDatabase.img_idxs)
+             np.save('supportlabels.npy',self.supportDatabase.labels)
              balancedBatchSampler = BalancedBatchSampler(self.supportDatabase.labels, int(self.batch_size/3), 3)
              supportTrainLoader = DataLoader(supportDataset, batch_sampler=balancedBatchSampler)
              finetune_on_support(self.model, supportTrainLoader, self.orig_target_dict)

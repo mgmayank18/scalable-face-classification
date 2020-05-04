@@ -23,9 +23,10 @@ vis = visdom.Visdom(server='gpu10.int.autonlab.org',port='8097')
 
 num_query = 2000
 fraud_ratio = 0.1
-num_day = 30
+num_day = 200
 threshold = 0.5
-finetune_every = 10
+finetune_every = 15
+finetune_flag = True
 
 num_query_total = num_query*num_day
 tp = fp = tn = fn = 0
@@ -34,7 +35,7 @@ fp_list = np.zeros(num_day)
 tn_list = np.zeros(num_day)
 fn_list = np.zeros(num_day)
 
-batch_size = 350
+batch_size = 348
 pretrained_path = './saved_models_attempt2/lr_0.0001/epoch_7.pt'
 dataset_path = '../data/VGGFace2/train_cropped_split'
 num_imp_classes = 2000
@@ -92,7 +93,7 @@ fraud_classes = np.array(all_classes[len(imp_classes):])
 time_taken = []
 
 print("Initializing Biometric System...")
-biometricSystem = BiometricSystem(database=initial_database, model=resnet, vgg_dataset=dataset, orig_target_dict=pretrained_embeddings_list, batch_size=batch_size, threshold = threshold, finetune_every=finetune_every)
+biometricSystem = BiometricSystem(database=initial_database, model=resnet, vgg_dataset=dataset, finetune_flag=finetune_flag, orig_target_dict=pretrained_embeddings_list, batch_size=batch_size, threshold = threshold, finetune_every=finetune_every)
 
 for i in range(num_day):
     print("Day ",i)

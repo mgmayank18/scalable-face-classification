@@ -132,7 +132,8 @@ def pass_epoch(
         writer.add_scalars('loss', {mode: loss.detach()}, writer.iteration)
         for metric_name, metric in metrics.items():
             writer.add_scalars(metric_name, {mode: metric})
-
+    print("Saving Model...")
+    torch.save(model.state_dict(), 'epoch_'+str(Epoch)+'.pt')
     return loss, metrics
 
 

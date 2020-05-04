@@ -98,7 +98,7 @@ def _get_triplet_mask(labels):
 
     valid_labels = ~i_equal_k & i_equal_j
 
-    return valid_labels & distinct_indices
+    return valid_labels.cuda() & distinct_indices.cuda()
 
 
 def _get_anchor_positive_triplet_mask(labels, device):
@@ -220,6 +220,5 @@ def batch_all_triplet_loss(labels, embeddings, margin, squared=False):
 
     # Get final mean triplet loss over the positive valid triplets
     triplet_loss = triplet_loss.sum() / (num_positive_triplets + 1e-16)
-    print(triplet_loss, fraction_positive_triplets)
 
     return triplet_loss, fraction_positive_triplets
