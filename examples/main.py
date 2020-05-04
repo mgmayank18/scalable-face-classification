@@ -24,8 +24,8 @@ vis = visdom.Visdom(server='gpu10.int.autonlab.org',port='8097')
 num_query = 2000
 fraud_ratio = 0.1
 num_day = 30
-threshold = 0.2
-finetune_every = 2
+threshold = 0.5
+finetune_every = 10
 
 num_query_total = num_query*num_day
 tp = fp = tn = fn = 0
@@ -34,7 +34,7 @@ fp_list = np.zeros(num_day)
 tn_list = np.zeros(num_day)
 fn_list = np.zeros(num_day)
 
-batch_size = 300
+batch_size = 350
 pretrained_path = './saved_models_attempt2/lr_0.0001/epoch_7.pt'
 dataset_path = '../data/VGGFace2/train_cropped_split'
 num_imp_classes = 2000
@@ -123,6 +123,8 @@ for i in range(num_day):
     fp_list[i] = 100*np.count_nonzero(_fp)/num_query
     tn_list[i] = 100*np.count_nonzero(_tn)/num_query
     fn_list[i] = 100*np.count_nonzero(_fn)/num_query
+
+    print("True Pos : ", 100*np.count_nonzero(_tp)/num_query,"False Pos : ", 100*np.count_nonzero(_fp)/num_query,"True Neg : ", 100*np.count_nonzero(_tn)/num_query,"False Neg : ", 100*np.count_nonzero(_fn)/num_query)
 
 print(f"Average Time taken per day = {np.array(time_taken).mean()}")
 print(f"tp = {100*tp/num_query_total}%")

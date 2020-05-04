@@ -43,7 +43,7 @@ class BalancedBatchSampler(BatchSampler):
     def __len__(self):
         return self.n_dataset // self.batch_size
 
-class SupportDataset(Dataset):
+class SupportDataset():
 #     """
 #     A customized data loader for the "Security Sytem trainer"
 #     """  
@@ -55,10 +55,10 @@ class SupportDataset(Dataset):
     def __getitem__(self, index):
         """ Get a sample from the dataset
         """
-        img = self.vgg_dataset[int(self.img_idxs[index])] #Store these as INTs to begin with?
+        img, gt_labels = self.vgg_dataset[int(self.img_idxs[index])] #Store these as INTs to begin with?
         label = self.labels[index]
         idx = int(self.img_idxs[index])
-        return (img, label, idx)
+        return (img, label, idx, gt_labels)
     
     def __len__(self):
         return len(self.img_idxs)

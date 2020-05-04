@@ -279,7 +279,6 @@ class InceptionResnetV1_LWF(nn.Module):
         Returns:
             torch.tensor -- Batch of embeddings or softmax probabilities.
         """
-
         x = self.conv2d_1a(x)
         x = self.conv2d_2a(x)
         x = self.conv2d_2b(x)
@@ -298,6 +297,8 @@ class InceptionResnetV1_LWF(nn.Module):
 
         #Original
         x_orig = self.last_linear(x.view(x.shape[0], -1))
+        #print(x_orig.shape)
+        #if x_orig.shape[0] != 1:
         x_orig = self.last_bn(x_orig)
         if self.classify:
             x_orig = self.logits(x_orig)
@@ -306,6 +307,7 @@ class InceptionResnetV1_LWF(nn.Module):
             
         #New Task - Biometrics
         x_new = self.last_linear_new_task(x.view(x.shape[0], -1))
+        #if x_new.shape[0] != 1:
         x_new = self.last_bn_new_task(x_new)
         x_new = F.normalize(x_new, p=2, dim=1)
         
