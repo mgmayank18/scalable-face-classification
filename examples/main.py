@@ -20,6 +20,7 @@ import visdom
 # vis = visdom.Visdom(server='gpu10.int.autonlab.org',port='8097')
 vis = visdom.Visdom()
 
+color = (np.random.random_sample((500, 3))*255).astype(int)
 #ASSUMPTION: All support classes are first k classes of all_classes
 
 num_query = 500
@@ -112,6 +113,24 @@ for i in range(num_day):
     pred = biometricSystem.checkfaces(query_ids)
     elapsed_time = time.process_time() - t
     time_taken.append(elapsed_time)
+
+    # vis.scatter(X = biometricSystem.supportDatabase.tsne_X,
+    #     opts={
+    #     "title" : "TSNE Day "+str(i+1   ),
+    #     "markersize" : 4,
+    #     "markercolor" : (np.random.random_sample((500, 3))*255).astype(int),
+    #     }
+    # )
+    vis.scatter(X = biometricSystem.supportDatabase.tsne_X,
+        Y = biometricSystem.supportDatabase.labels+1,
+        opts={
+        "title" : "TSNE Day "+str(i+1   ),
+        "markersize" : 4,
+        "markercolor" : color,
+        }
+    )
+
+
     
     _tp = np.logical_and(pred == labels, pred >= 0)
     _fp = np.logical_and(pred != labels, pred >= 0)

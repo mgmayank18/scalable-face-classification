@@ -13,8 +13,10 @@ import numpy as np
 import time
 import os
 
+from sklearn.manifold import TSNE
 from sklearn.neighbors import NearestNeighbors
 from sklearn.cluster import KMeans
+import visdom
 
 class SupportDatabase():
     '''
@@ -45,6 +47,8 @@ class SupportDatabase():
         self.vgg_dataset = vgg_dataset
         self.batch_size = batch_size
 
+        self.tsne_X = None
+
         # Get embeddings for initial database items
         aligned = []
         for class_id, img_ref in database.items():
@@ -61,6 +65,8 @@ class SupportDatabase():
             embeddings[start:end] = self.model(aligned[start:end]).detach().cpu()
 
         embeddings = embeddings / (np.linalg.norm(embeddings, axis=-1)[:, np.newaxis])
+
+        
 
         for i, item in enumerate(database.items()):
             label, img_idx = item
@@ -81,11 +87,16 @@ class SupportDatabase():
         self.labels = np.append(self.labels, labels).astype(int)
         self.embeddings = np.vstack((self.embeddings, embeddings))
 
+
         self.update_prototypes()
 
         # for i, label in enumerate(self.unique_class_ids):
         #     self.prototypes[i] = np.mean(self.embeddings[self.labels == label], axis=0)
         #     self.prototypes[i] = self.prototypes[i] / np.linalg.norm(self.prototypes[i])
+        
+        # self.tsne_X = TSNE(n_components=2).fit_transform(self.prototypes)
+        self.tsne_X = TSNE(n_components=2).fit_transform(self.embeddings)
+        print("Shape of TSNE X ", self.tsne_X.shape)
     
     def update_model(self, model):
         self.model = model
