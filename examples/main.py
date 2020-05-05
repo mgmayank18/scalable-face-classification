@@ -20,8 +20,6 @@ import visdom
 # vis = visdom.Visdom(server='gpu10.int.autonlab.org',port='8097')
 vis = visdom.Visdom()
 
-color = (np.random.random_sample((501, 3))*200).astype(int) + 50
-color[500,:] = 0    # 501th colour is fraud / msg of darkness
 #ASSUMPTION: All support classes are first k classes of all_classes
 
 num_query = 500
@@ -42,6 +40,7 @@ batch_size = 200
 pretrained_path = './models/epoch_7.pt'
 dataset_path = '../data/VGGFace2/train_cropped_split'
 num_imp_classes = 500
+
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Running on device: {}'.format(device))
@@ -127,7 +126,7 @@ for i in range(num_day):
         opts={
         "title" : "TSNE Day "+str(i+1),
         "markersize" : 4,
-        "markercolor" : color,
+        "markercolor" : biometricSystem.supportDatabase.color,
         }
     )
 

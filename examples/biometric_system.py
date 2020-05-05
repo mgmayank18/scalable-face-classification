@@ -17,6 +17,7 @@ from sklearn.manifold import TSNE
 from sklearn.neighbors import NearestNeighbors
 from sklearn.cluster import KMeans
 import visdom
+vis = visdom.Visdom()
 
 class SupportDatabase():
     '''
@@ -48,8 +49,6 @@ class SupportDatabase():
         self.batch_size = batch_size
         self.gt_labels = np.zeros(len(database),dtype=int)
 
-        self.tsne_X = None
-
         # Get embeddings for initial database items
         aligned = []
         for class_id, img_ref in database.items():
@@ -76,7 +75,7 @@ class SupportDatabase():
             self.img_idxs[i] = img_idx
             self.labels[i] = label
             self.embeddings[i] = embeddings[i]
-
+            
             self.gt_labels[i] = label
             
         #     self.database[label] = {
@@ -84,6 +83,13 @@ class SupportDatabase():
         #         'embeddings': [embeddings[i]]
         #         'prototype': [embeddings[i]]
         #     }
+
+        self.tsne_X = None
+        self.dark_index = np.amax(self.labels) + 1
+        self.color = None
+
+
+
 
     def update_db(self, img_idxs, labels, embeddings, gt_labels):
         self.img_idxs = np.append(self.img_idxs, img_idxs).astype(int)
@@ -99,8 +105,14 @@ class SupportDatabase():
         #     self.prototypes[i] = self.prototypes[i] / np.linalg.norm(self.prototypes[i])
         
         # self.tsne_X = TSNE(n_components=2).fit_transform(self.prototypes)
+        color_num = np.unique(self.gt_labels).shape[0]
+        self.color = (np.random.random_sample((color_num, 3))*200).astype(int) + 50
+        self.color[-1,:] = 0    # 501th colour is fraud / msg of darkness
+        print("updating")
         self.tsne_X = TSNE(n_components=2).fit_transform(self.embeddings)
+        self.plot_outliers()
         print("Shape of TSNE X ", self.tsne_X.shape)
+        
     
     def update_model(self, model):
         self.model = model
@@ -132,6 +144,26 @@ class SupportDatabase():
         kmeans.fit(self.embeddings)
         self.prototypes = kmeans.cluster_centers_
         self.labels[n:] = kmeans.predict(self.embeddings[n:])
+
+    
+    def plot_outliers(self):
+        tsne_outlier_thresh = 1.414 * 50    # magic-est number
+        invTrans = transforms.Compose([ transforms.Normalize(mean = [ 0., 0., 0. ],
+                                                std = [ 1/0.229, 1/0.224, 1/0.225 ]),
+                                                transforms.Normalize(mean = [ -0.485, -0.456, -0.406 ],
+                                                std = [ 1., 1., 1. ]),
+                                                ])
+
+        radius = np.linalg.norm(self.tsne_X, axis=1)
+        print(radius)
+        out_ind = np.where(radius > tsne_outlier_thresh)
+        outlier_idxs = self.img_idxs[out_ind]
+        for idx in outlier_idxs:
+            img = self.vgg_dataset[idx][0]
+            img = invTrans(img)
+            print("plot")
+            vis.image(img)
+
 
 
     def __len__(self):
@@ -219,6 +251,7 @@ class BiometricSystem():
         ''' Get the ground truth labels
         '''
         n = len(query_refs)
+        
         gt_labels = []
         for i in range(0, math.ceil(n/self.batch_size)):
             start = self.batch_size*i
@@ -227,7 +260,7 @@ class BiometricSystem():
             for query_ref in query_refs[start:end]:
                 label = self.vgg_dataset[query_ref][1]
                 if len(np.where(self.supportDatabase.labels == label)[0]) == 0:
-                    label = self.supportDatabase.unique_class_ids.shape[0]
+                    label = self.supportDatabase.dark_index
                 gt_labels.append(label)
             
         gt_labels = np.array(gt_labels)
