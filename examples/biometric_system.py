@@ -135,9 +135,11 @@ class BiometricSystem():
         self.threshold = threshold
         self.supportDatabase = SupportDatabase(database, model, vgg_dataset, batch_size)
         
-    def checkfaces(self, query_refs, thresh=self.threshold):
+    def checkfaces(self, query_refs):
         ''' List of queries for one day
         Get a query with the vgg_sample_idx query_ids'''
+
+        thresh = self.threshold
         a = time.time()
         query_embeddings, support_embeddings = self.get_embeddings(query_refs)
         b = time.time()
@@ -163,8 +165,9 @@ class BiometricSystem():
              np.save('supportlabels.npy',self.supportDatabase.labels)
              balancedBatchSampler = BalancedBatchSampler(self.supportDatabase.labels, int(self.batch_size/10), 10)
              supportTrainLoader = DataLoader(supportDataset, batch_sampler=balancedBatchSampler)
-             finetune_on_support(self.model, supportTrainLoader, self.orig_target_dict)
+             L_old, L_new = finetune_on_support(self.model, supportTrainLoader, self.orig_target_dict)
              self.supportDatabase.update_model(self.model)
+             torch.save(self.model.state_dict(),"Model_MSE_"+str(L_old)+"_Trip_"+str(L_new))
         return pred
                 
     def get_embeddings(self, query_refs):

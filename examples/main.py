@@ -22,11 +22,11 @@ vis = visdom.Visdom()
 
 #ASSUMPTION: All support classes are first k classes of all_classes
 
-num_query = 2000
+num_query = 500
 fraud_ratio = 0.1
-num_day = 200
-threshold = 0.5
-finetune_every = 15
+num_day = 100
+threshold = 0.7
+finetune_every = 10
 finetune_flag = True
 
 num_query_total = num_query*num_day
@@ -36,10 +36,10 @@ fp_list = np.zeros(num_day)
 tn_list = np.zeros(num_day)
 fn_list = np.zeros(num_day)
 
-batch_size = 200
+batch_size = 348
 pretrained_path = './saved_models_attempt2/lr_0.0001/epoch_7.pt'
 dataset_path = '../data/VGGFace2/train_cropped_split'
-num_imp_classes = 2000
+num_imp_classes = 500
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Running on device: {}'.format(device))

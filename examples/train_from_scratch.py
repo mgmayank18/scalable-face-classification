@@ -13,7 +13,7 @@ from utils import xavier_init
 data_dir = '../data/VGGFace2/train'
 
 batch_size = 500
-epochs = 10
+epochs = 20
 workers = 0 if os.name == 'nt' else 24
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -68,10 +68,10 @@ print("Done.")
 
 
 resnet = nn.DataParallel(resnet.to(device))
-weights = torch.load('./saved_models/lr_0.01/epoch_2.pt')
+weights = torch.load('./saved_models/lr_0.001/epoch_6.pt')
 resnet.load_state_dict(weights)
 
-optimizer = optim.AdamW(resnet.parameters(), lr=0.001)
+optimizer = optim.AdamW(resnet.parameters(), lr=0.0001)
 
 #optimizer = optim.SGD(resnet.parameters(), lr=0.1)
 scheduler = MultiStepLR(optimizer, [10, 15])
@@ -131,7 +131,7 @@ for epoch in range(epochs):
     )
     
     print("Saving Model...")
-    torch.save(resnet.state_dict(), './saved_models/epoch_'+str(epoch+1)+'.pt')
+    torch.save(resnet.state_dict(), './saved_models/epoch_'+str(10+epoch+1)+'.pt')
 
     resnet.eval()
     training.pass_epoch(
