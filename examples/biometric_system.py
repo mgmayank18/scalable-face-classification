@@ -81,11 +81,11 @@ class SupportDatabase():
         self.labels = np.append(self.labels, labels).astype(int)
         self.embeddings = np.vstack((self.embeddings, embeddings))
 
-        for i, label in enumerate(self.unique_class_ids):
-            # print("before", self.prototypes[i])
-            self.prototypes[i] = np.mean(self.embeddings[self.labels == label], axis=0)
-            self.prototypes[i] = self.prototypes[i] / np.linalg.norm(self.prototypes[i])
-            # print("after", self.prototypes[i])
+        self.update_prototypes()
+
+        # for i, label in enumerate(self.unique_class_ids):
+        #     self.prototypes[i] = np.mean(self.embeddings[self.labels == label], axis=0)
+        #     self.prototypes[i] = self.prototypes[i] / np.linalg.norm(self.prototypes[i])
     
     def update_model(self, model):
         self.model = model
@@ -106,9 +106,18 @@ class SupportDatabase():
 
         embeddings = embeddings / (np.linalg.norm(embeddings, axis=-1)[:, np.newaxis])
         self.embeddings = embeddings
-        for i, label in enumerate(self.unique_class_ids):
-            self.prototypes[i] = np.mean(self.embeddings[self.labels == label], axis=0)
-            self.prototypes[i] = self.prototypes[i] / np.linalg.norm(self.prototypes[i])
+        self.update_prototypes()
+        # for i, label in enumerate(self.unique_class_ids):
+        #     self.prototypes[i] = np.mean(self.embeddings[self.labels == label], axis=0)
+        #     self.prototypes[i] = self.prototypes[i] / np.linalg.norm(self.prototypes[i])
+
+    def update_prototypes(self):
+        n = len(self.unique_class_ids)
+        kmeans = KMeans(n, init=self.embeddings[:n])
+        kmeans.fit(self.embeddings)
+        self.prototypes = kmeans.cluster_centers_
+        self.labels[n:] = kmeans.predict(self.embeddings[n:])
+
 
     def __len__(self):
         return len(self.class_ids)
