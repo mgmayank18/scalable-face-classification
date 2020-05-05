@@ -91,24 +91,24 @@ class SupportDatabase():
         self.model = model
         # Update embeddings and prototypes
 
-        aligned = []
-        for img_idx in self.img_idxs:
-            img = self.vgg_dataset[img_idx][0]
-            aligned.append(img)
-        
-        aligned = torch.stack(aligned).cuda()
-        embeddings = np.zeros((len(aligned), 512))
-        self.model.eval()
-        for i in range(0, math.ceil(len(aligned)/self.batch_size)):
+        n = len(self.img_idxs)
+        embeddings = np.zeros((n, 512))
+        for i in range(0, math.ceil(n/self.batch_size)):
             start = self.batch_size*i
-            end = min(self.batch_size*(i+1), len(aligned))
-            embeddings[start:end] = self.model(aligned[start:end]).detach().cpu()
+            end = min(self.batch_size*(i+1), n)
+            aligned = []
+            for img_idx in self.img_idxs[start:end]:
+                img = self.vgg_dataset[img_idx][0]
+                aligned.append(img)
+            aligned = torch.stack(aligned).cuda()
+            self.model.eval()
+            embeddings[start:end] = self.model(aligned).detach().cpu()
 
         embeddings = embeddings / (np.linalg.norm(embeddings, axis=-1)[:, np.newaxis])
         self.embeddings = embeddings
         for i, label in enumerate(self.unique_class_ids):
             self.prototypes[i] = np.mean(self.embeddings[self.labels == label], axis=0)
-            self.prototypes[i] = self.prototypes[i] / np.mean(self.prototypes[i])
+            self.prototypes[i] = self.prototypes[i] / np.linalg.norm(self.prototypes[i])
 
     def __len__(self):
         return len(self.class_ids)
@@ -135,7 +135,7 @@ class BiometricSystem():
         self.threshold = threshold
         self.supportDatabase = SupportDatabase(database, model, vgg_dataset, batch_size)
         
-    def checkfaces(self, query_refs, thresh=0.7):
+    def checkfaces(self, query_refs, thresh=self.threshold):
         ''' List of queries for one day
         Get a query with the vgg_sample_idx query_ids'''
         a = time.time()
@@ -161,7 +161,7 @@ class BiometricSystem():
              supportDataset = SupportDataset(self.supportDatabase.img_idxs, self.supportDatabase.labels, self.vgg_dataset)
              np.save('img_idx.npy',self.supportDatabase.img_idxs)
              np.save('supportlabels.npy',self.supportDatabase.labels)
-             balancedBatchSampler = BalancedBatchSampler(self.supportDatabase.labels, int(self.batch_size/3), 3)
+             balancedBatchSampler = BalancedBatchSampler(self.supportDatabase.labels, int(self.batch_size/10), 10)
              supportTrainLoader = DataLoader(supportDataset, batch_sampler=balancedBatchSampler)
              finetune_on_support(self.model, supportTrainLoader, self.orig_target_dict)
              self.supportDatabase.update_model(self.model)
@@ -170,22 +170,22 @@ class BiometricSystem():
     def get_embeddings(self, query_refs):
         ''' List of queries for one day
         Get a query with the vgg_sample_idx query_ids'''
-        aligned = []
         classes = []
         
         n = len(query_refs)
-        for query_ref in query_refs:
-            img = self.vgg_dataset.__getitem__(query_ref)[0]
-            aligned.append(img)
 
-        aligned = torch.stack(aligned).cuda()
-        embeddings = np.zeros((len(aligned), 512))
-        self.model.eval()
-        for i in range(0, math.ceil(len(aligned)/self.batch_size)):
+        embeddings = np.zeros((n, 512))
+        for i in range(0, math.ceil(len(query_refs)/self.batch_size)):
             start = self.batch_size*i
-            end = min(self.batch_size*(i+1), len(aligned))
-            embeddings[start:end] = self.model(aligned[start:end]).detach().cpu()
-        
+            end = min(self.batch_size*(i+1), n)
+            aligned = []
+            for query_ref in query_refs[start:end]:
+                img = self.vgg_dataset[query_ref][0]
+                aligned.append(img)
+            aligned = torch.stack(aligned).cuda()
+            self.model.eval()
+            embeddings[start:end] = self.model(aligned).detach().cpu()
+
         embeddings = embeddings / (np.linalg.norm(embeddings, axis=-1)[:, np.newaxis])
         query_embeddings = embeddings
         support_embeddings = self.supportDatabase.prototypes

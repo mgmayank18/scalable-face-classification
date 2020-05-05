@@ -30,6 +30,7 @@ def finetune_on_support(model, Dataloader, orig_target_dict, epochs=12, lr=0.01,
             L_old = MSE(orig_feats,target_old_task)
             L_new, frac_valid_trip = batch_all_triplet_loss(labels, new_feats, margin=margin, squared=False)
             L_total = Lambda*L_old + L_new
+            # L_total = L_new
             sys.stdout.write("\rLoss Total : %f L_trip : %f L_old : %f, Frac Valid Trips: %f"%(L_total.item(),L_new.item(), L_old.item(),frac_valid_trip.item()))
             sys.stdout.flush()
 

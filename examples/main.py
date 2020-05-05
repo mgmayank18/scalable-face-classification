@@ -17,7 +17,8 @@ import numpy as np
 import os
 
 import visdom
-vis = visdom.Visdom(server='gpu10.int.autonlab.org',port='8097')
+# vis = visdom.Visdom(server='gpu10.int.autonlab.org',port='8097')
+vis = visdom.Visdom()
 
 #ASSUMPTION: All support classes are first k classes of all_classes
 
@@ -35,7 +36,7 @@ fp_list = np.zeros(num_day)
 tn_list = np.zeros(num_day)
 fn_list = np.zeros(num_day)
 
-batch_size = 348
+batch_size = 200
 pretrained_path = './saved_models_attempt2/lr_0.0001/epoch_7.pt'
 dataset_path = '../data/VGGFace2/train_cropped_split'
 num_imp_classes = 2000
