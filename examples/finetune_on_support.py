@@ -6,10 +6,8 @@ import numpy as np
 import pdb
 import sys
 
-def finetune_on_support(model, Dataloader, orig_target_dict, epochs=12, lr=0.01, logger=None, margin=0.5, Lambda=10):
+def finetune_on_support(model, Dataloader, orig_target_dict, optimizer, epochs=6, logger=None, margin=0.1, Lambda=10):
     MSE = nn.MSELoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
-    scheduler = MultiStepLR(optimizer, [4, 8])
     model.train()
 
     for epoch in range(epochs):
@@ -39,5 +37,5 @@ def finetune_on_support(model, Dataloader, orig_target_dict, epochs=12, lr=0.01,
                         
             L_total.backward()
             optimizer.step()
-        scheduler.step()
+    model.eval()
     return L_old, L_new

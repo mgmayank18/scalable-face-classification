@@ -14,6 +14,7 @@ import time
 import os
 
 from sklearn.neighbors import NearestNeighbors
+from sklearn.cluster import KMeans
 
 class SupportDatabase():
     '''
@@ -41,10 +42,8 @@ class SupportDatabase():
         self.labels = np.zeros(len(database),dtype=int)
         self.embeddings = np.zeros((len(database), 512))
         self.model = model
-        #self.trans = trans
         self.vgg_dataset = vgg_dataset
         self.batch_size = batch_size
-        # self.database = {}
 
         # Get embeddings for initial database items
         aligned = []
@@ -54,6 +53,7 @@ class SupportDatabase():
 
         aligned = torch.stack(aligned).cuda()
         embeddings = np.zeros((len(aligned), 512))
+
         self.model.eval()
         for i in range(0, math.ceil(len(aligned)/self.batch_size)):
             start = self.batch_size*i
@@ -125,16 +125,11 @@ class BiometricSystem():
         self.vgg_dataset = vgg_dataset
         self.finetune_flag = finetune_flag
         self.batch_size = batch_size
-
         self.model = model
-        #self.trans = transforms.Compose([
-        #    np.float32,
-        #    transforms.ToTensor(),
-        #    fixed_image_standardization
-        #])
+        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=0.001)
         self.threshold = threshold
         self.supportDatabase = SupportDatabase(database, model, vgg_dataset, batch_size)
-        
+    
     def checkfaces(self, query_refs):
         ''' List of queries for one day
         Get a query with the vgg_sample_idx query_ids'''
@@ -165,9 +160,9 @@ class BiometricSystem():
              np.save('supportlabels.npy',self.supportDatabase.labels)
              balancedBatchSampler = BalancedBatchSampler(self.supportDatabase.labels, int(self.batch_size/10), 10)
              supportTrainLoader = DataLoader(supportDataset, batch_sampler=balancedBatchSampler)
-             L_old, L_new = finetune_on_support(self.model, supportTrainLoader, self.orig_target_dict)
+             L_old, L_new = finetune_on_support(self.model, supportTrainLoader, self.orig_target_dict, self.optimizer)
              self.supportDatabase.update_model(self.model)
-             torch.save(self.model.state_dict(),"Model_MSE_"+str(L_old)+"_Trip_"+str(L_new))
+             torch.save(self.model.state_dict(),"Model_MSE_"+str(L_old.item())+"_Trip_"+str(L_new.item())+".pt")
         return pred
                 
     def get_embeddings(self, query_refs):
