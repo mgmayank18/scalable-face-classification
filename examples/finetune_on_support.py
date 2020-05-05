@@ -40,4 +40,4 @@ def finetune_on_support(model, Dataloader, orig_target_dict, epochs=12, lr=0.01,
             L_total.backward()
             optimizer.step()
         scheduler.step()
-        return L_old, L_new
+    return L_old, L_new
