@@ -46,6 +46,7 @@ class SupportDatabase():
         self.model = model
         self.vgg_dataset = vgg_dataset
         self.batch_size = batch_size
+        self.gt_labels = np.zeros(len(database),dtype=int)
 
         self.tsne_X = None
 
@@ -75,6 +76,8 @@ class SupportDatabase():
             self.img_idxs[i] = img_idx
             self.labels[i] = label
             self.embeddings[i] = embeddings[i]
+
+            self.gt_labels[i] = label
             
         #     self.database[label] = {
         #         'img_idx': [img_idx]
@@ -82,10 +85,11 @@ class SupportDatabase():
         #         'prototype': [embeddings[i]]
         #     }
 
-    def update_db(self, img_idxs, labels, embeddings):
+    def update_db(self, img_idxs, labels, embeddings, gt_labels):
         self.img_idxs = np.append(self.img_idxs, img_idxs).astype(int)
         self.labels = np.append(self.labels, labels).astype(int)
         self.embeddings = np.vstack((self.embeddings, embeddings))
+        self.gt_labels = np.append(self.gt_labels, gt_labels).astype(int)
 
 
         self.update_prototypes()
@@ -168,7 +172,9 @@ class BiometricSystem():
         pred = neighs.flatten()
         mask = pred>0
 
-        self.supportDatabase.update_db(query_refs[mask], pred[mask], query_embeddings[mask])     
+        gt_labels = self.get_gt_labels(query_refs)
+
+        self.supportDatabase.update_db(query_refs[mask], pred[mask], query_embeddings[mask], gt_labels[mask])     
         self.days +=1
         
         if(self.days%self.finetune_every == 0) and self.finetune_flag:
@@ -208,3 +214,22 @@ class BiometricSystem():
         query_embeddings = embeddings
         support_embeddings = self.supportDatabase.prototypes
         return query_embeddings, support_embeddings
+
+    def get_gt_labels(self, query_refs):
+        ''' Get the ground truth labels
+        '''
+        n = len(query_refs)
+        gt_labels = []
+        for i in range(0, math.ceil(n/self.batch_size)):
+            start = self.batch_size*i
+            end = min(self.batch_size*(i+1), n)
+            
+            for query_ref in query_refs[start:end]:
+                label = self.vgg_dataset[query_ref][1]
+                if len(np.where(self.supportDatabase.labels == label)[0]) == 0:
+                    label = self.supportDatabase.unique_class_ids.shape[0]
+                gt_labels.append(label)
+            
+        gt_labels = np.array(gt_labels)
+
+        return gt_labels

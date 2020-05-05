@@ -20,7 +20,8 @@ import visdom
 # vis = visdom.Visdom(server='gpu10.int.autonlab.org',port='8097')
 vis = visdom.Visdom()
 
-color = (np.random.random_sample((500, 3))*255).astype(int)
+color = (np.random.random_sample((501, 3))*200).astype(int) + 50
+color[500,:] = 0    # 501th colour is fraud / msg of darkness
 #ASSUMPTION: All support classes are first k classes of all_classes
 
 num_query = 500
@@ -38,7 +39,7 @@ tn_list = np.zeros(num_day)
 fn_list = np.zeros(num_day)
 
 batch_size = 200
-pretrained_path = './saved_models_attempt2/lr_0.0001/epoch_7.pt'
+pretrained_path = './models/epoch_7.pt'
 dataset_path = '../data/VGGFace2/train_cropped_split'
 num_imp_classes = 500
 
@@ -122,9 +123,9 @@ for i in range(num_day):
     #     }
     # )
     vis.scatter(X = biometricSystem.supportDatabase.tsne_X,
-        Y = biometricSystem.supportDatabase.labels+1,
+        Y = biometricSystem.supportDatabase.gt_labels+1,
         opts={
-        "title" : "TSNE Day "+str(i+1   ),
+        "title" : "TSNE Day "+str(i+1),
         "markersize" : 4,
         "markercolor" : color,
         }
