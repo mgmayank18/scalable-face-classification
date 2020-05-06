@@ -26,7 +26,7 @@ num_query = 500
 fraud_ratio = 0.1
 num_day = 100
 threshold = 0.7
-finetune_every = 10
+finetune_every = 15
 finetune_flag = True
 
 num_query_total = num_query*num_day
